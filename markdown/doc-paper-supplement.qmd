@@ -1,0 +1,40 @@
+---
+  title: "DOC Paper Q Supplement"
+format: html
+---
+  
+  ```{r}
+library(tidyverse)
+```
+
+
+```{r}
+#| include: false
+
+old_am <- read.csv("../../data/q_v_2.0/bcak_cus_allMod_hakaiBsns.csv") # v 2.0 q done by amrit
+
+old_comp <- read.csv("../../data/q_v_2.0/composite_gauged_modelled_Q_newParams_20200901.csv") # v 2.0 composite q by alex
+
+# gauged for comparison 
+new_wsc_flows_2010 <- read.csv("../../data/q_v_2.0/unreg_gauge_data/2021_UPDATED_wsc_1981-2010_monthly_normals_long.csv") |> 
+  select(ID = STATION_NUMBER, month = Month, runoff_new = runoff)
+```
+
+## Overview
+
+Below are plots to be used in the DOC flux paper which uses the 1981-2010 Q norms.
+
+## Annuals
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
