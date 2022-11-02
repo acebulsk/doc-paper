@@ -1,0 +1,525 @@
+---
+title: "DOC Paper Q Supplement"
+author: "Alex Cebulski"
+format: html
+date: "`r Sys.Date()`"
+self-contained: true
+---
+  
+```{r}
+#| include: false
+
+library(tidyverse)
+library(sf)
+library(ggforce)
+library(tmap)
+```
+
+
+```{r}
+#| include: false
+#| warning: false
+
+wsc_bsns <- st_read("data/gis/wsc_gauge_basins/hnbp_2022/hnbp_2022_wsc_basins_w_dat_avail.shp") |> 
+  st_drop_geometry() 
+
+nobGaugeArea <- wsc_bsns |> 
+  select(ID = StationNum, area_km2 = Area_km2) |> 
+  distinct()
+
+nobGauge <- read.csv("data/gauged/wsc/wsc_unregulated_1981_2010_flows_wide_2022.csv") |> 
+  left_join(nobGaugeArea) |> 
+  select(ID,
+         area = area_km2, 
+         Jan:ann_mm)
+
+nobMod <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.csv") |> 
+  left_join(nobGaugeArea) |> 
+  select(ID,
+         area = area_km2, 
+         Jan:ann_mm)
+
+#south of border
+
+sobGauge <- read.csv("data/gauged/usgs/usgs_1981_2010_monthly_flows_wide_2022.csv") 
+
+sobGgeArea <- sobGauge |> select(ID, area)
+
+sobMod <- read.csv("data/modelled/usgs/dcwbm_raw_from_amrit_usgs_unreg_1981_2010.csv") |> 
+  dplyr::rename(ID = GAGE_ID)  |> 
+  left_join(sobGgeArea) |> 
+  select(ID, area, Jan:Dec, ann_mm)
+
+sobMobLong <- sobMod |> 
+  pivot_longer(Jan:Dec, names_to = "Month", values_to = "mod_q") |> 
+  mutate(ID = paste0(ID, Month))  |> 
+  select(ID, mod_q)
+
+sobGaugeLong <- sobGauge |> 
+  pivot_longer(Jan:Dec, names_to = "Month", values_to = "gauge_q") |> 
+  mutate(ID = paste0(ID, Month))  |> 
+  select(ID, gauge_q)
+
+# create dfs for full domain
+
+mod <- rbind(nobMod, sobMod) 
+
+mod_long <- mod |> 
+  pivot_longer(Jan:Dec, names_to = "Month", values_to = "mod_q") |> 
+  select(ID, Month, mod_q) 
+
+gauge <- rbind(nobGauge, sobGauge) 
+
+gauge_long <- gauge |>  
+  pivot_longer(Jan:Dec, names_to = "Month", values_to = "gauge_q") |> 
+  select(ID, Month, gauge_q)
+
+all_monthly <- inner_join(mod_long, gauge_long)
+
+all_annuals <- inner_join(mod, gauge, by = "ID") |> 
+  select(ID, area = area.x, ann_mm_mod = ann_mm.x, ann_mm_gauge = ann_mm.y)
+
+# basin meta
+
+wsc_meta <- read.csv('data/gauged/wsc/wsc_unregulated_1981_2010_metadata.csv')
+usgs_meta <- readRDS('data/gauged/usgs/usgs_1981_2010_site_meta.rds')
+stn_names <- rbind(
+  wsc_meta |> select(ID = STATION_NUMBER, name = STATION_NAME),
+  usgs_meta |> select(ID = site_no, name = station_nm)
+)
+
+# amrit cal set 
+
+cal_ids <- read.csv('data/modelled/raw from amrit/calibration_set.csv')$ID |> toupper()
+
+# mapping
+
+npctr <- read_sf('data/gis/npctr_basins/npctr_basins_valid_no_fr_clm.shp')
+
+sf <- read_sf('data/gis/wsc_gauge_basins/hnbp_2022/hnbp_2022_wsc_all_basins.shp') 
+
+usgs_basins <- read_sf('data/gis/usgs_gauge_basins/usgs_unregulated_basins_1981-2010_dataRetrieval_2022_update.shp')
+
+bg <- rbind(raster::getData('GADM', country = c('CAN'), level = 0),
+            raster::getData('GADM', country = c('USA'), level = 0)) %>%
+  st_as_sf() %>%
+  st_transform(st_crs(sf))
+```
+
+## Overview
+
+Below are plots to be included in the DOC flux paper which uses the 1981-2010 Q norms from Amrit's regime based calibration on 38 basins in British Columbia. The plots attempt to show the quality of modelled Q through the comparison against observed values. Additional basins were included to assess uncalibrated basins and to show performance in the USA. 155 unregulated gauges were used for the first analysis. A second analysis on just the calibration set of 38 basins is shown below.
+
+## Data Sources
+
+Modelled Data
+
+- 1981-2010 monthly runoff normals
+- DCWBM with Amrit's calibration set
+
+Gauged Data
+
+- WSC: tidyhydat r package
+- USGS: dataRetreival
+
+Basin Delineations
+
+- WSC: https://collaboration.cmc.ec.gc.ca/cmc/hydrometrics/www/HydrometricNetworkBasinPolygons/
+- USGS: 
+  - https://water.usgs.gov/GIS/dsdl/boundaries_shapefiles_by_aggeco.zip
+  - https://water.usgs.gov/GIS/metadata/usgswrd/XML/gagesII_Sept2011.xml
+
+Map of the 155 unregulated gauges: 
+
+```{r}
+#| echo: false
+#| warning: false
+
+
+tmap_options(check.and.fix = TRUE)
+
+tm_shape(bg, bbox = npctr) +
+  tm_fill() +
+  tm_shape(sf |> filter(StationNum %in% mod$ID)) +
+  tm_polygons(col = 'blue') +
+  tm_shape(usgs_basins |> filter(GAGE_ID %in% mod$ID)) +
+  tm_polygons(col = 'green') +
+  tm_graticules(
+  ) 
+```
+
+
+
+## Annuals
+
+```{r}
+#| warning: false
+#| echo: false
+
+ggplot(all_annuals, aes(x= ann_mm_gauge, y = ann_mm_mod)) +
+  geom_point(aes()) +
+  labs(x='Observed Runoff (mm)', y = 'Modelled Runoff (mm)') +
+  geom_abline(intercept = 0, slope = 1) +
+  xlim(0, 4000) +
+  ylim(0, 4000) +
+  scale_colour_brewer(palette="Dark2") +
+  theme_bw() 
+
+ggsave('plots/obs_mod_annual_runoff_1981_2010.png')
+```
+
+## Annual Statistics
+
+```{r}
+#| warning: false
+#| echo: false
+
+
+all_annuals |> 
+  mutate(diff = ann_mm_mod - ann_mm_gauge) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(ann_mm_gauge, ann_mm_mod, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(ann_mm_gauge, ann_mm_mod, use = 'na.or.complete', method = 'spearman')) |> 
+    mutate(across(everything(), round, digits = 2)) |> 
+  knitr::kable()
+```
+
+```{r}
+#| warning: false
+#| echo: false
+
+
+ann_stats <- all_annuals |> 
+  mutate(diff = ann_mm_mod - ann_mm_gauge) |> 
+  mutate(abs_diff = abs(ann_mm_mod - ann_mm_gauge)) |> 
+  mutate(perc_diff = (diff / ann_mm_gauge)*100) |> 
+  mutate(abs_perc_dif = (abs_diff / ann_mm_gauge)*100) |> 
+  left_join(stn_names)
+
+hist(ann_stats$perc_diff, main ="", xlab = "Percent Error", xlim = c(-100, 150))
+```
+
+## Seasonal Hydrograph Plots
+
+```{r fig.height=8, fig.width=8,echo=FALSE, message=FALSE, warning=FALSE}
+all_monthly_long <- rbind(
+  mod_long |> 
+    mutate(type = 'Modelled') |> 
+    rename(q = mod_q),
+  gauge_long |> 
+    mutate(type = 'Observed') |> 
+    rename(q = gauge_q)
+)
+
+# 4 good 4 bad
+select_ids <- c(
+                '08EG012',
+                '08FB004',
+                '08GA075',
+                '12092000',
+                '08EE008',
+                '08EB005',
+                '08HB032',
+                '12025700'
+              )
+
+select_monthly_long <- all_monthly_long |> 
+   filter(ID %in% select_ids) |> 
+  left_join(stn_names)
+  
+# alternate good, bad for good col and bad col on plot 
+select_monthly_long$ID <- factor(
+  select_monthly_long$ID,
+  c(
+    '08EG012',
+    '08FB004',
+    '08GA075',
+    '12092000',
+    '08EE008',
+    '08EB005',
+    '08HB032',
+    '12025700'
+  )
+) 
+
+select_monthly_long_arrange <- select_monthly_long |>
+              mutate(name = factor(name, levels = unique(name[order(ID)])))
+
+
+
+
+
+# all$regime <- factor(all$regime, c('1. Pluvial', '2. Pluvial Dominant Hybrid', '3. Nival Dominant Hybrid', '4. Nival-Pluvial-Glacial', '5. Nivo-Glacial', '6. Nival', '7. Icefield'))
+
+ggplot(select_monthly_long_arrange, aes(x = factor(Month, levels = c('Oct', 'Nov', 'Dec','Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep')), 
+                y = q,
+                group = type)) +
+  geom_line(aes(linetype = type), size = 1) +
+  labs(x='Month', y = 'Runoff (mm)') +
+  theme_bw() +
+  scale_colour_brewer(palette="Dark2") +
+  facet_wrap_paginate(~name, scales = "free_y", labeller = label_wrap_gen(multi_line=FALSE), ncol = 2, nrow = 4, page = 1) + 
+  theme(legend.title = element_blank(),
+        legend.position='bottom',
+        legend.box="vertical", legend.margin=margin(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        axis.title.x=element_blank()) 
+
+ggsave("plots/select_hydrographs.png", units = "in", width = 7, height = 7)
+
+mon_stat <- 
+  all_monthly |> 
+  mutate(diff = mod_q - gauge_q) |> 
+  group_by(ID) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    `Max Error` = diff[which.max(abs(diff))],
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'spearman'),
+    nse = 1 - sum((gauge_q-mod_q)^2)/sum((gauge_q-mean(gauge_q, na.rm = T))^2), # checked and this is the same as hydroGOF package and joels code
+  ) |> 
+    mutate(across(-ID, round, digits = 2)) |> 
+  left_join(stn_names)
+```
+
+The stats for the above plots are:
+
+```{r fig.height=8, fig.width=8,echo=FALSE, message=FALSE, warning=FALSE}
+mon_stat |> 
+   filter(ID %in% select_ids) |> 
+  knitr::kable()
+
+```
+
+## Monthly Statistics
+
+```{r}
+#| warning: false
+#| echo: false
+
+mon_stat <- 
+  all_monthly |> 
+  mutate(diff = mod_q - gauge_q) |> 
+  group_by(ID) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    `Max Error` = diff[which.max(abs(diff))],
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'spearman'),
+    nse = 1 - sum((gauge_q-mod_q)^2)/sum((gauge_q-mean(gauge_q, na.rm = T))^2), # checked and this is the same as hydroGOF package and joels code
+  ) |> 
+    mutate(across(-ID, round, digits = 2)) |> 
+  left_join(stn_names) 
+
+write.csv(mon_stat, 'plots/obs_mod_monthly_runoff_1981_2010_error_table.csv', row.names = F)
+  
+mon_stat |> knitr::kable()
+```
+
+# Calibration Set Only
+
+38 basins were used in the 2020 regime based calibration which were all located within BC.
+
+```{r}
+#| echo: false
+#| warning: false
+
+
+all_annuals <- all_annuals |> filter(ID %in% cal_ids)
+
+all_monthly <- all_monthly |> filter(ID %in% cal_ids)
+
+sf <- sf |> filter(StationNum %in% cal_ids)
+
+tmap_options(check.and.fix = TRUE)
+
+tm_shape(bg, bbox = npctr) +
+  tm_fill() +
+  tm_shape(sf) +
+  tm_polygons(col = 'blue') +
+  tm_graticules(
+  ) 
+```
+
+
+## Annuals
+
+```{r}
+#| warning: false
+#| echo: false
+
+ggplot(all_annuals, aes(x= ann_mm_gauge, y = ann_mm_mod)) +
+  geom_point(aes()) +
+  labs(x='Observed Runoff (mm)', y = 'Modelled Runoff (mm)') +
+  geom_abline(intercept = 0, slope = 1) +
+  xlim(0, 4000) +
+  ylim(0, 4000) +
+  scale_colour_brewer(palette="Dark2") +
+  theme_bw() 
+
+ggsave('plots/obs_mod_annual_runoff_1981_2010_cal_only.png')
+```
+
+## Annual Statistics
+
+```{r}
+#| warning: false
+#| echo: false
+
+
+all_annuals |> 
+  mutate(diff = ann_mm_mod - ann_mm_gauge) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(ann_mm_gauge, ann_mm_mod, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(ann_mm_gauge, ann_mm_mod, use = 'na.or.complete', method = 'spearman')) |> 
+    mutate(across(everything(), round, digits = 2)) |> 
+  knitr::kable()
+```
+
+```{r}
+#| warning: false
+#| echo: false
+
+
+ann_stats <- all_annuals |> 
+  mutate(diff = ann_mm_mod - ann_mm_gauge) |> 
+  mutate(abs_diff = abs(ann_mm_mod - ann_mm_gauge)) |> 
+  mutate(perc_diff = (diff / ann_mm_gauge)*100) |> 
+  mutate(abs_perc_dif = (abs_diff / ann_mm_gauge)*100) |> 
+  left_join(stn_names)
+
+hist(ann_stats$perc_diff, main ="", xlab = "Percent Error", xlim = c(-100, 150))
+```
+
+## Seasonal Hydrograph Plots
+
+```{r fig.height=8, fig.width=8,echo=FALSE, message=FALSE, warning=FALSE}
+all_monthly_long <- rbind(
+  mod_long |> 
+    mutate(type = 'Modelled') |> 
+    rename(q = mod_q),
+  gauge_long |> 
+    mutate(type = 'Observed') |> 
+    rename(q = gauge_q)
+)
+
+# 4 good 4 bad
+select_ids <- c(
+                '08EG012',
+                '08FB004',
+                '08GA075',
+                '12092000',
+                '08EE008',
+                '08EB005',
+                '08HB032',
+                '12025700'
+              )
+
+select_monthly_long <- all_monthly_long |> 
+   filter(ID %in% select_ids) |> 
+  left_join(stn_names)
+  
+# alternate good, bad for good col and bad col on plot 
+select_monthly_long$ID <- factor(
+  select_monthly_long$ID,
+  c(
+    '08EG012',
+    '08FB004',
+    '08GA075',
+    '12092000',
+    '08EE008',
+    '08EB005',
+    '08HB032',
+    '12025700'
+  )
+) 
+
+select_monthly_long_arrange <- select_monthly_long |>
+              mutate(name = factor(name, levels = unique(name[order(ID)])))
+
+
+
+
+
+# all$regime <- factor(all$regime, c('1. Pluvial', '2. Pluvial Dominant Hybrid', '3. Nival Dominant Hybrid', '4. Nival-Pluvial-Glacial', '5. Nivo-Glacial', '6. Nival', '7. Icefield'))
+
+ggplot(select_monthly_long_arrange, aes(x = factor(Month, levels = c('Oct', 'Nov', 'Dec','Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep')), 
+                y = q,
+                group = type)) +
+  geom_line(aes(linetype = type), size = 1) +
+  labs(x='Month', y = 'Runoff (mm)') +
+  theme_bw() +
+  scale_colour_brewer(palette="Dark2") +
+  facet_wrap_paginate(~name, scales = "free_y", labeller = label_wrap_gen(multi_line=FALSE), ncol = 2, nrow = 4, page = 1) + 
+  theme(legend.title = element_blank(),
+        legend.position='bottom',
+        legend.box="vertical", legend.margin=margin(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        axis.title.x=element_blank()) 
+
+ggsave("plots/select_hydrographs_cal_only.png", units = "in", width = 7, height = 7)
+
+mon_stat <- 
+  all_monthly |> 
+  mutate(diff = mod_q - gauge_q) |> 
+  group_by(ID) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    `Max Error` = diff[which.max(abs(diff))],
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'spearman'),
+    nse = 1 - sum((gauge_q-mod_q)^2)/sum((gauge_q-mean(gauge_q, na.rm = T))^2), # checked and this is the same as hydroGOF package and joels code
+  ) |> 
+    mutate(across(-ID, round, digits = 2)) |> 
+  left_join(stn_names)
+```
+
+The stats for the above plots are:
+
+```{r fig.height=8, fig.width=8,echo=FALSE, message=FALSE, warning=FALSE}
+mon_stat |> 
+   filter(ID %in% select_ids) |> 
+  knitr::kable()
+
+```
+
+## Monthly Statistics
+
+```{r}
+#| warning: false
+#| echo: false
+
+mon_stat <- 
+  all_monthly |> 
+  mutate(diff = mod_q - gauge_q) |> 
+  group_by(ID) |> 
+  summarise(
+    `Mean Bias` = mean(diff, na.rm = T),
+    `Max Error` = diff[which.max(abs(diff))],
+    MAE = mean(abs(diff), na.rm = T),
+    RMSE = sqrt(mean(diff ^ 2, na.rm = T)),
+    r_pear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'pearson'),
+    r_spear = cor(gauge_q, mod_q, use = 'na.or.complete', method = 'spearman'),
+    nse = 1 - sum((gauge_q-mod_q)^2)/sum((gauge_q-mean(gauge_q, na.rm = T))^2), # checked and this is the same as hydroGOF package and joels code
+  ) |> 
+    mutate(across(-ID, round, digits = 2)) |> 
+  left_join(stn_names) 
+
+write.csv(mon_stat, 'plots/obs_mod_monthly_runoff_1981_2010_error_table_cal_only.csv', row.names = F)
+  
+mon_stat |> knitr::kable()
+```
