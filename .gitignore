@@ -5,3 +5,6 @@
 data/gis
 data/modelled
 *.Rproj
+gadm36_CAN_0_sp.rds
+gadm36_USA_0_sp.rds
+*.zip
