@@ -21,14 +21,14 @@ wsc_bsns <- read_sf('data/gis/wsc_gauge_basins/hnbp_2022/hnbp_2022_wsc_basins_w_
   st_make_valid()
 
 # join basin ID to points 
-dcwbm_grid_new_jn <- st_join(dcwbm_grid_new, wsc_bsns, join = st_intersects) %>%
+dcwbm_grid_new_jn <- st_join(dcwbm_grid_new, wsc_bsns, join = st_intersects) |>
   st_drop_geometry()
 
 colnames(dcwbm_grid_new_jn)[5:16] <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 
-pts.avg <- dcwbm_grid_new_jn %>%
-  filter(is.na(StationNum) == F) %>%
-  group_by(StationNum) %>%
+pts.avg <- dcwbm_grid_new_jn |>
+  filter(is.na(StationNum) == F) |>
+  group_by(StationNum) |>
   summarize(Jan = mean(Jan, na.rm = T),
             Feb = mean(Feb, na.rm = T),
             Mar = mean(Mar, na.rm = T),
@@ -40,8 +40,8 @@ pts.avg <- dcwbm_grid_new_jn %>%
             Sep = mean(Sep, na.rm = T),
             Oct = mean(Oct, na.rm = T),
             Nov = mean(Nov, na.rm = T),
-            Dec = mean(Dec, na.rm = T)) %>%
-  mutate(ann_mm = rowSums(.[,2:13, drop=TRUE], na.rm = TRUE)) %>% 
+            Dec = mean(Dec, na.rm = T)) |>
+  mutate(ann_mm = rowSums(.[,2:13, drop=TRUE], na.rm = TRUE)) |> 
   rename(ID = StationNum)
 
 write.csv(pts.avg, "data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.csv", row.names = F)
@@ -51,11 +51,11 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 
 # ###### convert to m3/s##### 
 # # get wsc area in km3 
-# wsc_area <- wsc_bsn_q %>% 
-#   st_drop_geometry() %>% 
+# wsc_area <- wsc_bsn_q |> 
+#   st_drop_geometry() |> 
 #   select(WSC, area)
 # 
-# dcwbm_mm <- pts.avg %>% 
+# dcwbm_mm <- pts.avg |> 
 #   left_join(wsc_area, by = "WSC")
 # 
 # colnames(dcwbm_mm)[2:13] <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
@@ -63,16 +63,16 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 # # days in a month
 # mdays = data.frame(Month = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12), mdays = c(31,28.25,31,30,31,30,31,31,30,31,30,31))
 # 
-# dcwbm_long <- dcwbm_mm %>% 
-#   pivot_longer(`1`:`12`, names_to = "Month", values_to = "q") %>% 
+# dcwbm_long <- dcwbm_mm |> 
+#   pivot_longer(`1`:`12`, names_to = "Month", values_to = "q") |> 
 #   mutate(ID = paste0(WSC, Month))
 # 
 # # coherce months to numeric
 # dcwbm_long$Month <- as.numeric(dcwbm_long$Month)
 # 
 # # convert mm to cms 
-# dcwbm_cms <- dcwbm_long %>% 
-#   left_join(mdays, by = 'Month') %>% 
+# dcwbm_cms <- dcwbm_long |> 
+#   left_join(mdays, by = 'Month') |> 
 #   mutate(q_cms =  (((q/1000) * (1000000 * area)) * (1/(mdays*24*60*60))),
 #          q_cky = (q/1000000) * (area))
 # 
@@ -80,22 +80,22 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 # 
 # 
 # # wsc convert
-# wsc_mm <- wsc_bsn_q %>% 
-#   st_drop_geometry() %>% 
+# wsc_mm <- wsc_bsn_q |> 
+#   st_drop_geometry() |> 
 #   select(WSC, Jan:Dec, area, regime)
 # 
 # colnames(wsc_mm)[2:13] <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
 # 
-# wsc_long <- wsc_mm %>% 
-#   pivot_longer(`1`:`12`, names_to = "Month", values_to = "q") %>% 
+# wsc_long <- wsc_mm |> 
+#   pivot_longer(`1`:`12`, names_to = "Month", values_to = "q") |> 
 #   mutate(ID = paste0(WSC, Month))
 # 
 # # coherce months to numeric
 # wsc_long$Month <- as.numeric(wsc_long$Month)
 # 
 # # convert mm to cms 
-# wsc_cms <- wsc_long %>% 
-#   left_join(mdays, by = 'Month') %>% 
+# wsc_cms <- wsc_long |> 
+#   left_join(mdays, by = 'Month') |> 
 #   mutate(q_cms =  (((q/1000) * (1000000 * area)) * (1/(mdays*24*60*60))),
 #          q_cky = (q/1000000) * (area))
 # 
@@ -125,13 +125,13 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 # 
 # month_num <- data.frame(num = c(1:12), month = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'))
 # 
-# dcwbm_long <- mod %>% 
-#   pivot_longer(Jan:Dec, names_to = "month", values_to = "dcwbm_q") %>% 
-#   left_join(month_num, by = "month") %>% 
+# dcwbm_long <- mod |> 
+#   pivot_longer(Jan:Dec, names_to = "month", values_to = "dcwbm_q") |> 
+#   left_join(month_num, by = "month") |> 
 #   select(ID, month = num, dcwbm_q)
 # 
 # 
-# wsc_long <- gauge %>% 
+# wsc_long <- gauge |> 
 #   select(ID = STATION_NUMBER, month = Month, gauge_q = runoff)
 # 
 # dat <- left_join(wsc_long, dcwbm_long, by = c("ID", "month"))  
@@ -149,14 +149,14 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 # 
 # 
 # # plot annual mm
-# wsc_ann <- read.csv("D:/transboundary_hakai/scratch/unreg_Gauged_Data/2021_UPDATED_wsc_1981-2010_monthly_normals_wide.csv") %>% 
+# wsc_ann <- read.csv("D:/transboundary_hakai/scratch/unreg_Gauged_Data/2021_UPDATED_wsc_1981-2010_monthly_normals_wide.csv") |> 
 #   select(ID = STATION_NUMBER, ann_mm)
 # 
-# dcbwm_ann <- mod %>% 
+# dcbwm_ann <- mod |> 
 #   select(ID, ann_mm_mod = ann_mm)
 # 
-# combine_ann <- left_join(wsc_ann, dcbwm_ann, by = "ID") %>% 
-#   mutate(diff = (ann_mm - ann_mm_mod)) %>% 
+# combine_ann <- left_join(wsc_ann, dcbwm_ann, by = "ID") |> 
+#   mutate(diff = (ann_mm - ann_mm_mod)) |> 
 #   mutate(perc_diff = (ann_mm - ann_mm_mod)/ann_mm_mod)
 # 
 # ggplot(combine_ann, aes(x= ann_mm, y = ann_mm_mod)) +
@@ -179,7 +179,7 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 #   hovertemplate = paste(
 #     "<b>%{text}</b><br>",
 #     "%{yaxis.title.text}: %{y:,.0f}<br>",
-#     "%{xaxis.title.text}: %{x:,.0f}")) %>% 
+#     "%{xaxis.title.text}: %{x:,.0f}")) |> 
 #   layout(
 #     xaxis = list(title = "Observed (mm)"),
 #     yaxis = list(title = "Modelled (mm)")
@@ -188,8 +188,8 @@ pts.avg <- read.csv("data/modelled/wsc/dcwbm_raw_from_amrit_wsc_unreg_1981_2010.
 # # group by regime 
 # combine_cms <- left_join(wsc_cms, dcwbm_cms, suffix = c("_obs", "_mod"), by = "ID")
 # 
-# summarizeRegime <- combine_cms %>% 
-#   group_by(regime) %>% 
+# summarizeRegime <- combine_cms |> 
+#   group_by(regime) |> 
 #   summarise(across(c(q_cms_obs, q_cms_mod), mean))
 # 
 # ggplot(summarizeRegime, aes(x= q_cms_obs, y = q_cms_mod)) +
