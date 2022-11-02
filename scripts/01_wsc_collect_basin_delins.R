@@ -64,7 +64,7 @@ wsc_gauges_w_data$STATION_NUMBER[!wsc_gauges_w_data$STATION_NUMBER %in% sh_2016_
 
 
 # new basins from NHC 2021 missing seymour, mamquam, clayton 
-nhc_meta <- read.csv("data/gis/wsc_gauge_basins/WSC_Basins_NHC_2021/Appendix 5.3 GIS Data/20200817_3004476_NHC_station_metadata.R0.csv") %>% 
+nhc_meta <- read.csv("data/gis/wsc_gauge_basins/WSC_Basins_NHC_2021/Appendix 5.3 GIS Data/20200817_3004476_NHC_station_metadata.R0.csv") |> 
   dplyr::rename(ID = Gauge.ID)
 
 nhc_bsns <- st_read("data/gis/wsc_gauge_basins/WSC_Basins_NHC_2021/Appendix 5.3 GIS Data/20200811_3004476_NHC_all_watersheds.R0.shp")
@@ -74,29 +74,29 @@ nhc_bsns[nhc_bsns$ID == "15041200", "ID"] <- "08BB005" # conv usgs id to wgs id 
 nhc_bsns[nhc_bsns$ID == "15024800", "ID"] <- "08CF003" # conv usgs id to wgs id to match Q dat
 
 
-nhc_ids <- nhc_bsns %>% st_drop_geometry()
+nhc_ids <- nhc_bsns |> st_drop_geometry()
 
 # has seymout and mamquam
-raw_ec_bsns <- st_read("data/gis/wsc_gauge_basins/raw_ec_basins_BC.shp") %>% 
-  st_transform((st_crs(nhc_bsns))) %>% 
-  select(ID = Station, Name = StatnNm) %>% 
+raw_ec_bsns <- st_read("data/gis/wsc_gauge_basins/raw_ec_basins_BC.shp") |> 
+  st_transform((st_crs(nhc_bsns))) |> 
+  select(ID = Station, Name = StatnNm) |> 
   filter(!ID %in% nhc_bsns$ID)
 
 # has clayton
-foundry_sptl_bsns <- st_read("data/gis/wsc_gauge_basins/basins_for_bill_floyd_from_FoundrySpatial/basins_for_bill_floyd/assigned_basins.shp") %>% 
-  st_transform((st_crs(nhc_bsns))) %>% 
-  select(ID = station_nu, Name = station_na) %>% 
+foundry_sptl_bsns <- st_read("data/gis/wsc_gauge_basins/basins_for_bill_floyd_from_FoundrySpatial/basins_for_bill_floyd/assigned_basins.shp") |> 
+  st_transform((st_crs(nhc_bsns))) |> 
+  select(ID = station_nu, Name = station_na) |> 
   filter(!ID %in% nhc_bsns$ID)
 
 # combine basins
-all_bsns <- rbind(nhc_bsns, raw_ec_bsns, foundry_sptl_bsns) %>% 
+all_bsns <- rbind(nhc_bsns, raw_ec_bsns, foundry_sptl_bsns) |> 
   left_join(nhc_meta, by = "ID")
 
 # missing PITMAN RIVER NEAR THE MOUTH, STIKINE RIVER ABOVE GRAND CANYON, STIKINE RIVER ABOVE BUTTERFLY CREEK
 
-missing_basins <- wsc_gauges_w_data %>% filter(!STATION_NUMBER %in% all_bsns$ID) 
+missing_basins <- wsc_gauges_w_data |> filter(!STATION_NUMBER %in% all_bsns$ID) 
 
-legacy_wsc_basins_w_dat <- all_bsns %>% filter(ID %in% wsc_gauges_w_data$STATION_NUMBER) #%>% st_drop_geometry()
+legacy_wsc_basins_w_dat <- all_bsns |> filter(ID %in% wsc_gauges_w_data$STATION_NUMBER) #|> st_drop_geometry()
 
 # now how bad were the original areas?
 
