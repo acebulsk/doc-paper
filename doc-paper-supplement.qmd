@@ -210,7 +210,7 @@ ann_perc_diff <- all_annuals |>
 
 ## Overview
 
-Below are plots to be included in the DOC flux paper which uses the 1981-2010 Q norms from Amrit's regime based calibration on 38 basins in British Columbia. The plots attempt to show the quality of modelled Q through the comparison against observed values. Additional basins were included to assess uncalibrated basins and to show performance in the USA. 155 unregulated gauges were used for the first analysis. A second analysis on just the calibration set of 38 basins is shown below.
+Below are plots to be included in the DOC flux paper which uses the 1981-2010 Q norms from Amrit's regime based calibration on 38 basins in British Columbia. The plots attempt to show the quality of modelled Q through the comparison against observed values. Additional basins were included in this analysis to assess uncalibrated basins and to show performance in the USA. 
 
 ## Data Sources
 
