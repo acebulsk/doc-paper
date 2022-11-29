@@ -20,7 +20,7 @@ doc_q_original <- read.csv('data/composite/DCWBM_Runnoff_mm_composite_Master_DOC
 
 # original gauged data that was used before we found additional data
 
-wsc_old <- read.csv('data/gauged/wsc/wsc_flowDat_withRegulated_old_file_from_JT_script.csv')
+wsc_old <- read.csv('data/gauged/wsc/regulated/wsc_flowDat_withRegulated_old_file_from_JT_script.csv')
 
 usgs_old <- st_read('data/gauged/usgs/usgs_data_croix/cus_usgs_basins_huc_IP_ID.shp') |> 
   st_drop_geometry() 
@@ -29,11 +29,11 @@ usgs_old <- st_read('data/gauged/usgs/usgs_data_croix/cus_usgs_basins_huc_IP_ID.
 npctr_bsn <- st_read('data/gis/npctr_basins/npctr_basins.shp')
 
 # get observed data with regulated stations included
-wsc <- read.csv('data/gauged/wsc/regulated/wsc_regulated_1981_2010_flows_long.csv') %>% 
+wsc <- read.csv('data/gauged/wsc/regulated/wsc_regulated_1981_2010_flows_long.csv') |> 
   select(GAUGEID = STATION_NUMBER, Month, area = area_km2, runoff, Q, start_year, end_year, record_length)
 
-usgs <- read.csv('data/gauged/usgs/regulated/usgs_regulated_1981-2010_long.csv') %>% 
-  select(GAUGEID = site_no, Month = month_nu, area, runoff, Q, start_year, end_year, record_length) %>% 
+usgs <- read.csv('data/gauged/usgs/regulated/usgs_regulated_1981-2010_long.csv') |> 
+  select(GAUGEID = site_no, Month = month_nu, area, runoff, Q, start_year, end_year, record_length) |> 
   mutate(area = area / 1e6)
 
 all_flows <- rbind(wsc, usgs)
@@ -44,7 +44,7 @@ reg_bsn <- st_read('data/composite/all_regulated_basins_no_overlap_v4.shp')
 
 # get V2 modelled data which was calibrated by Amrit
 
-mod <- st_read("data/modelled/raw from amrit/DCWBM/DCWBM/HUC_Runoff_Gridded.csv",
+mod <- st_read("data/modelled/HUC_Runoff_Gridded.csv",
                                  options=c("AUTODETECT_TYPE=YES",
                                            "X_POSSIBLE_NAMES=Long",
                                            "Y_POSSIBLE_NAMES=Lat")) |> 
