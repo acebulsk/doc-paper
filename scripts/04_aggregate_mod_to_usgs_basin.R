@@ -7,7 +7,7 @@ library(ggplot2)
 library(plotly)
 
 # get cus 
-dcwbm_grid_new <- st_read('data/modelled/raw from amrit/DCWBM/DCWBM/CUS_Runoff_Gridded.csv', 
+dcwbm_grid_new <- st_read('data/modelled/CUS_Runoff_Gridded.csv', 
                           options=c("AUTODETECT_TYPE=YES", 
                                     "X_POSSIBLE_NAMES=Long",
                                     "Y_POSSIBLE_NAMES=Lat")) 
