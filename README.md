@@ -12,4 +12,6 @@ Contents of this repository include
 - model vs observed runoff error table 
 - scripts to create the composite gauged discharge for each basin of the NPCTR (i.e. includes gauged where available)
 
-![Study Domain](plots/gauge_basin_map.png){width="50%"} ![Model Assessment](plots/obs_mod_annual_runoff_1981_2010_cal_only.png){width="50%"}
+![Study Domain](plots/gauge_basin_map.png)
+
+![Model Assessment](plots/obs_mod_annual_runoff_1981_2010_cal_only.png)
