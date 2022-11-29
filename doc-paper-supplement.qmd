@@ -22,7 +22,7 @@ library(tmap)
 
 # amrit cal set 
 
-cal_ids <- read.csv('data/modelled/raw from amrit/calibration_set.csv')$ID |> toupper()
+cal_ids <- read.csv('data/modelled/calibration_set.csv')$ID |> toupper()
 
 # wsc gauged data
 
@@ -138,8 +138,8 @@ sf <- read_sf('data/gis/wsc_gauge_basins/hnbp_2022/hnbp_2022_wsc_all_basins.shp'
 usgs_basins <- read_sf('data/gis/usgs_gauge_basins/usgs_unregulated_basins_1981-2010_dataRetrieval_2022_update.shp')
 
 bg <- rbind(raster::getData('GADM', country = c('CAN'), level = 0),
-            raster::getData('GADM', country = c('USA'), level = 0)) %>%
-  st_as_sf() %>%
+            raster::getData('GADM', country = c('USA'), level = 0)) |>
+  st_as_sf() |>
   st_transform(st_crs(sf))
 ```
 
