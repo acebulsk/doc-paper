@@ -9,7 +9,7 @@ bc1 <- read_sf('data/modelled/dcwbmPointsBCAK_2020.shp')
 
 bc1_df <- bc1[,5:16] |> st_drop_geometry() |> pivot_longer(everything())
 
-bc2 <- read.csv('data/modelled/raw from amrit/DCWBM/DCWBM/HUC_Runoff_Gridded.csv') 
+bc2 <- read.csv('data/modelled/HUC_Runoff_Gridded.csv') 
 
 bc2_df <- bc2[,5:16] |> pivot_longer(everything())
 
@@ -22,7 +22,7 @@ cus1 <- read_sf('data/modelled/dcwbmPointsCUS_2020.shp')
 
 cus1_df <- cus1[,5:16] |> st_drop_geometry() |> as.data.frame() |> pivot_longer(everything())
 
-cus2 <- read.csv('data/modelled/raw from amrit/DCWBM/DCWBM/CUS_Runoff_Gridded.csv') 
+cus2 <- read.csv('data/modelled/CUS_Runoff_Gridded.csv') 
 
 cus2_df <- cus2[,5:16] |> pivot_longer(everything())
 
