@@ -56,6 +56,61 @@ mod <- st_read("data/modelled/HUC_Runoff_Gridded.csv",
 mod_gauge_ids <- mod |> 
   st_join(reg_bsn)
 
+# get the modelled points that are gauged
+pts_gaugeids <- mod_gauge_ids |>
+  st_drop_geometry() |> 
+  filter(is.na(GAUGEID) == F) 
+
+# get the modelled points with no gauge
+ungauge_pts <- mod |> 
+  filter(!ID %in% pts_gaugeids$ID)
+
+# we have some duplicate points but they are assigned different ip_ids so we do not double count
+dup_check <- ungauge_pts |> 
+  group_by(Lat, Long) |> 
+  filter(n()>1)
+
+ungauge_ipid <- ungauge_pts  |> 
+  # slice(1:1000) |>
+  group_by(IP_ID) |> 
+  summarise(
+    area = n() * 400 * 400, # area below gauge + some pts above maybe
+    across(`1`:`12`, ~mean(.x, na.rm = TRUE))) |> 
+  pivot_longer(`1`:`12`) |> 
+  mutate(name = as.numeric(name)) |> 
+  left_join(mdays, by = c('name' = 'Month')) |> 
+  mutate(q_mod_cms = (value * (1e6 * area) * (1/1000000000) * (1/(mdays*24*60*60)))) |> # mm to m3s 
+  select(IP_ID, Month = name, area, runoff = value, Q = q_mod_cms)
+
+length(unique(ungauge_ipid$IP_ID)) # we have all 6690 dont need to hack in fraser columbia 
+
+write.csv(ungauge_ipid |> st_drop_geometry(), 'data/composite/bcak_flows_ungauged_npctr_bsns_chunks_NO_columbia.csv', row.names = F)
+
+# join hakai ipids on the reg gauged data and then average all of the gauges within each ip_id
+
+all_flows_ipid <- all_flows |> 
+  inner_join(reg_bsn_ipid, by = 'GAUGEID') |> 
+  group_by(IP_ID, Month) |> 
+  summarise(
+    area = sum(area),
+    Q = sum(Q)) 
+
+# composite final 
+composite_raw <- left_join(ungauge_ipid, all_flows_ipid, by = c("IP_ID", "Month"), suffix = c("_sim", "_obs")) |> 
+  mutate(area_sim = area_sim / 1e6)
+
+composite_summ <- composite_raw |> 
+  mutate(comp_area = area_sim + area_obs, 
+         comp_q = Q_sim + Q_obs) |> 
+  select(IP_ID, Month, comp_area, comp_q) |> 
+  left_join(mdays) |> 
+  mutate(comp_mm = comp_q * (1/(comp_area*1e6)) * (mdays * 24 * 60 * 60) * 1000) |> 
+  filter(is.na(comp_mm) == F) |> 
+  st_drop_geometry()
+
+write.csv(composite_summ, 'data/composite/bcak_composite_flows.csv', row.names = F)
+
+
 
 
 
