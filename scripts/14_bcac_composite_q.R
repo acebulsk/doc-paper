@@ -48,8 +48,9 @@ mod <- st_read("data/modelled/HUC_Runoff_Gridded.csv",
                                  options=c("AUTODETECT_TYPE=YES",
                                            "X_POSSIBLE_NAMES=Long",
                                            "Y_POSSIBLE_NAMES=Lat")) |> 
-  st_crs(4326) |> 
-  st_transform(st_crs(npctr_bsn))
+  st_set_crs(4326) |>
+  st_transform(st_crs(npctr_bsn)) |> 
+  st_join(npctr_bsn |> select(IP_ID))
 
 # join basin IDs to modelled grid ####
 
@@ -73,6 +74,8 @@ dup_check <- ungauge_pts |>
 ungauge_ipid <- ungauge_pts  |> 
   # slice(1:1000) |>
   group_by(IP_ID) |> 
+  rename(`1` = X1, `2` = X2, `3` = X3, `4` = X4, `5` = X5, `6` = X6, `7` = X7, 
+         `8` = X8, `9` = X9, `10` = X10, `11` = X11, `12` = X12) |> 
   summarise(
     area = n() * 400 * 400, # area below gauge + some pts above maybe
     across(`1`:`12`, ~mean(.x, na.rm = TRUE))) |> 
@@ -102,11 +105,12 @@ composite_raw <- left_join(ungauge_ipid, all_flows_ipid, by = c("IP_ID", "Month"
 composite_summ <- composite_raw |> 
   mutate(comp_area = area_sim + area_obs, 
          comp_q = Q_sim + Q_obs) |> 
-  select(IP_ID, Month, comp_area, comp_q) |> 
+  select(IP_ID, Month, comp_area, area_sim, area_obs, comp_q, Q_sim, Q_obs) |> 
   left_join(mdays) |> 
   mutate(comp_mm = comp_q * (1/(comp_area*1e6)) * (mdays * 24 * 60 * 60) * 1000) |> 
   filter(is.na(comp_mm) == F) |> 
-  st_drop_geometry()
+  st_drop_geometry() |> 
+  filter(IP_ID == 29445)
 
 write.csv(composite_summ, 'data/composite/bcak_composite_flows.csv', row.names = F)
 

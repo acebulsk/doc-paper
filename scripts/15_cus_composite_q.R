@@ -107,7 +107,7 @@ composite_raw <- left_join(ungauge_ipid, all_flows_ipid, by = c("IP_ID", "Month"
 composite_summ <- composite_raw |> 
   mutate(comp_area = area_sim + area_obs, 
          comp_q = Q_sim + Q_obs) |> 
-  select(IP_ID, Month, comp_area, comp_q) |> 
+  select(IP_ID, Month, comp_area, area_sim, area_obs, comp_q) |> 
   left_join(mdays) |> 
   mutate(comp_mm = comp_q * (1/(comp_area*1e6)) * (mdays * 24 * 60 * 60) * 1000) |> 
   filter(is.na(comp_mm) == F) |> 
